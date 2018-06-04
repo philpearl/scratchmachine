@@ -1,10 +1,10 @@
+// +build linux
 package main
 
 import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -15,19 +15,15 @@ func main() {
 	if err := run(); err != nil {
 		fmt.Println(err.Error())
 	}
-
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func run() error {
-	fmt.Printf("Hello World!\n")
-
 	// Before we can configure ethernet we need to load hardware drivers
 	if err := addDriverModule(); err != nil {
 		return errors.Wrap(err, "failed to add driver")
 	}
+
+	fmt.Printf("driver added\n")
 
 	if err := configureEthernet(); err != nil {
 		return errors.Wrap(err, "failed to configure ethernet")
@@ -46,7 +42,6 @@ var fakeString [3]byte
 
 func addDriverModule() error {
 	// We need a file descriptor for our file
-	// driverPath := "/lib/modules/4.9.73-0-virthardened/kernel/drivers/net/ethernet/intel/e1000/e1000.ko"
 	driverPath := "/e1000.ko"
 	f, err := os.Open(driverPath)
 	if err != nil {
@@ -88,7 +83,7 @@ func configureEthernet() error {
 	sa := socketAddrRequest{}
 	copy(sa.name[:], "eth0")
 	sa.addr.Family = unix.AF_INET
-	copy(sa.addr.Addr[:], []byte{10, 0, 2, 15})
+	copy(sa.addr.Addr[:], []byte{192, 168, 59, 4})
 
 	// Set address
 	if err := ioctl(fd, unix.SIOCSIFADDR, uintptr(unsafe.Pointer(&sa))); err != nil {
@@ -112,7 +107,6 @@ func configureEthernet() error {
 	if err := ioctl(fd, unix.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&sf))); err != nil {
 		return errors.Wrap(err, "failed getting flags for eth0")
 	}
-
 	return nil
 }
 
